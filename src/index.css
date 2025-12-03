@@ -1,68 +1,19 @@
-/* ExcelGrid.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-.excel-container {
-  font-family: Arial, sans-serif;
-  padding: 20px;
-  background-color: #fff;
+/* Minimal global styles to satisfy import from src/main.jsx */
+html, body, #root {
+  height: 100%;
 }
-
-.excel-title {
-  color: #333;
-  margin-bottom: 15px;
-}
-
-.excel-table {
-  border-collapse: collapse;
-  width: 100%;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.excel-th {
-  border: 1px solid #ccc;
-  background: #f0f0f0;
-  padding: 10px;
-  text-align: center;
-  font-weight: bold;
-  color: #444;
-}
-
-.excel-index-cell {
-  border: 1px solid #ccc;
-  background: #f9f9f9;
-  width: 40px;
-  text-align: center;
-  color: #888;
-  font-size: 0.9em;
-  user-select: none; /* Evita que se seleccione el número al arrastrar */
-}
-
-.excel-td {
-  border: 1px solid #ccc;
-  padding: 0;
+body {
   margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  background: #fff;
+  color: #111;
 }
 
-.excel-input {
-  width: 100%;
-  border: none;
-  padding: 10px;
-  outline: none;
-  box-sizing: border-box;
-  font-size: 14px;
-  transition: background 0.2s;
-}
-
-.excel-input:focus {
-  background-color: #e8f0fe; /* Color azul tenue al seleccionar como en Excel */
-  border: 1px solid #1a73e8;
-}
-
-.excel-debug {
-  margin-top: 20px;
-  background: #222;
-  color: #0f0;
-  padding: 15px;
-  border-radius: 5px;
-  font-size: 12px;
-  overflow-x: auto;
+/* App-level helper (optional) */
+.app {
+  padding: 16px;
 }

@@ -3,3 +3,6 @@ dist/
 .vscode/
 /.idea
 .DS_Store
+ 
+# Ignore local Firebase runtime config (contains secrets)
+firebase-config.js

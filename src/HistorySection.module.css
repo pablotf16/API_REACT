@@ -1,0 +1,95 @@
+/* HistorySection.module.css */
+
+.container {
+  /* Mismo ADN que las StatCards y el Formulario */
+  background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+  border: 2px solid #bfdbfe; /* blue-200 */
+  border-radius: 1rem;
+  
+  /* Sombras y espaciado */
+  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1), 
+              0 2px 4px -1px rgba(59, 130, 246, 0.06);
+  padding: 1.5rem; /* p-6 equivalente */
+  margin: 0 auto;  /* Centrado horizontal */
+  width: 100%;
+  max-width: 42rem; /* Coincide con el ancho del formulario */
+  
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Centra el contenido interno */
+  
+  transition: all 0.3s ease;
+}
+
+.container:hover {
+  border-color: #3b82f6; /* blue-500 */
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.15);
+}
+
+/* Encabezado: Título + Filtro */
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+/* En pantallas grandes, poner título y filtro lado a lado */
+@media (min-width: 640px) {
+  .header {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #1e40af; /* blue-800 */
+  text-align: center;
+}
+
+/* Estilo del contenedor del filtro */
+.filterWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px; /* Pill shape */
+  border: 1px solid #bfdbfe;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.filterLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #60a5fa; /* blue-400 */
+  white-space: nowrap;
+}
+
+/* Estilo personalizado para el <select> */
+.select {
+  border: none;
+  background-color: transparent;
+  color: #2563eb; /* blue-600 */
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  outline: none;
+  padding-right: 1.5rem; /* Espacio para la flecha custom si quisieras */
+}
+
+.select:focus {
+  color: #1e3a8a;
+}
+
+/* Mensaje cuando no hay datos */
+.emptyState {
+  text-align: center;
+  color: #93c5fd; /* blue-300 */
+  font-style: italic;
+  padding: 2rem 0;
+}

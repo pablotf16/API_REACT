@@ -1,0 +1,8 @@
+.table {
+  border-collapse: collapse;
+}
+
+.inputSmall {
+  padding: 0.35rem;
+  font-size: 0.875rem;
+}

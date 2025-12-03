@@ -1,0 +1,51 @@
+/* StatCard.module.css */
+.card {
+  /* Fondo degradado de Blanco a Azul muy claro */
+  background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+  
+  /* Borde azul suave */
+  border: 2px solid #bfdbfe; /* blue-200 */
+  border-radius: 1rem; /* Bordes más redondos */
+  
+  /* Centrado absoluto del contenido */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  
+  /* Sombra coloreada (Glow azul) */
+  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1), 
+              0 2px 4px -1px rgba(59, 130, 246, 0.06);
+  
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  
+  /* Asegura que ocupe el espacio pero no se estire de más */
+  width: 100%;
+  max-width: 320px; 
+  margin: 0 auto; /* Centra la tarjeta en su contenedor padre */
+}
+
+.card:hover {
+  transform: translateY(-5px); /* Flota hacia arriba */
+  border-color: #3b82f6; /* El borde se vuelve azul intenso (blue-500) */
+  /* Sombra azul más fuerte al pasar el mouse */
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3), 
+              0 4px 6px -2px rgba(59, 130, 246, 0.1);
+}
+
+.title {
+  color: #60a5fa; /* blue-400 */
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  font-size: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.value {
+  color: #1e40af; /* blue-800 - Azul oscuro para contraste */
+  font-size: 2.25rem; /* Más grande */
+  font-weight: 800;
+  line-height: 1;
+}

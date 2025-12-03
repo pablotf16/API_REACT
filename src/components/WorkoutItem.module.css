@@ -1,0 +1,32 @@
+/* WorkoutItem.module.css */
+.container {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0; /* gray-200 por defecto */
+  border-left: 6px solid #bfdbfe; /* Acento azul claro a la izquierda */
+  border-radius: 12px;
+  
+  /* Transiciones suaves */
+  transition: all 0.2s ease-in-out;
+}
+
+/* Efecto Hover Colorido */
+.container:hover {
+  transform: scale(1.01); /* Crece un poquito */
+  border-color: #3b82f6; /* El borde completo se vuelve azul */
+  border-left-color: #2563eb; /* El acento izquierdo se oscurece */
+  background-color: #f0f9ff; /* Fondo cambia a azul cielo muy suave (sky-50) */
+  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.15);
+}
+
+.detailTable {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #eff6ff;
+}
+
+/* Centrado para la vista móvil si es necesario */
+@media (max-width: 640px) {
+  .container {
+    text-align: center;
+  }
+}

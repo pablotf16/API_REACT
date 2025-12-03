@@ -1,0 +1,72 @@
+/* NewWorkoutForm.module.css */
+
+/* El contenedor principal con la misma "alma" que las StatCards */
+.formContainer {
+  /* Fondo degradado idéntico a las cards */
+  background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+  
+  /* Borde azul suave y esquinas redondeadas */
+  border: 2px solid #bfdbfe; /* blue-200 */
+  border-radius: 1rem; 
+  
+  /* Sombra suave azulada */
+  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1), 
+              0 2px 4px -1px rgba(59, 130, 246, 0.06);
+  
+  /* Centrado */
+  margin: 0 auto; 
+  width: 100%;
+  max-width: 42rem; /* max-w-2xl equivalente */
+  
+  transition: all 0.3s ease;
+}
+
+/* Efecto hover global para el formulario */
+.formContainer:hover {
+  border-color: #3b82f6; /* blue-500 */
+  box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.15), 
+              0 10px 10px -5px rgba(59, 130, 246, 0.1);
+}
+
+/* Estilo para los Inputs y Selects */
+.input {
+  background-color: #ffffff;
+  border: 1px solid #d1d5db; /* gray-300 */
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  width: 100%;
+  transition: all 0.2s ease;
+  color: #1f2937;
+}
+
+.input:focus {
+  border-color: #3b82f6;
+  outline: none;
+  /* Anillo de enfoque brillante */
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); 
+}
+
+/* Etiquetas (Labels) más coloridas */
+.label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e40af; /* blue-800 - Texto azul oscuro */
+  margin-bottom: 0.25rem;
+}
+
+/* Tabla interna de ejercicios */
+.exercisesSection {
+  background-color: rgba(255, 255, 255, 0.7); /* Ligeramente transparente */
+  border: 1px solid #bfdbfe;
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.sectionTitle {
+  color: #2563eb; /* blue-600 */
+  text-align: center;
+  font-weight: 800;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+}
