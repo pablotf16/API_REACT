@@ -1,24 +1,71 @@
-Firebase configuration
-----------------------
+Por supuesto. Aquí tienes una guía paso a paso detallada que puedes añadir a tu README.md bajo una sección como "🚀 Instalación y Ejecución Local".
 
-This project expects a Firebase configuration to be available at runtime via a small script that
-sets `window.__firebase_config` (a JSON string). A placeholder file `firebase-config.js` has been
-added to the project root.
+Estas instrucciones cubren desde la instalación de dependencias hasta la configuración de los archivos que no se suben al repositorio (como firebase-config.js).
 
-Quick setup (local development):
+Propuesta para el README.md
+🚀 Ejecución Local
+Sigue estos pasos para clonar y ejecutar el proyecto en tu máquina local.
 
-1. Open `firebase-config.js` in the project root.
-2. Replace the placeholder values (`YOUR_API_KEY`, `YOUR_PROJECT_ID`, etc.) with your Firebase
-	project's configuration values (available in the Firebase console -> Project settings).
-3. Optionally, set `window.__initial_auth_token` in the same file if you need to sign in with a
-	custom token at startup.
+1. Prerrequisitos
+Asegúrate de tener instalado:
 
-Security notes:
-- Do not commit real Firebase credentials to a public repository. Use a private repo or
-  environment-specific build steps to inject secrets for production.
-- For CI/CD, generate `firebase-config.js` at build time from secure environment variables.
+Node.js (versión 18 o superior recomendada).
 
-If you'd like, I can:
-- Change the project to load config from environment variables at build time.
-- Add an example `firebase-config.example.js` and a `.gitignore` rule to avoid committing real creds.
+npm (normalmente viene con Node.js).
 
+2. Instalación
+Clona el repositorio e instala las dependencias:
+
+Bash
+
+# Clonar el repositorio
+git clone <URL_DEL_REPOSITORIO>
+cd nombre-del-proyecto
+
+# Instalar dependencias
+npm install
+3. Configuración Obligatoria (Firebase)
+Este proyecto no funcionará sin la configuración de Firebase. Como las credenciales son sensibles, el archivo de configuración no está incluido en el repositorio.
+
+Crea un archivo llamado firebase-config.js en la raíz del proyecto (al mismo nivel que package.json).
+
+Copia y pega el siguiente contenido, reemplazando los valores con los de tu proyecto de Firebase:
+
+JavaScript
+
+// firebase-config.js
+window.__firebase_config = JSON.stringify({
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_PROYECTO.firebaseapp.com",
+  projectId: "TU_PROYECTO_ID",
+  storageBucket: "TU_PROYECTO.appspot.com",
+  messagingSenderId: "TU_SENDER_ID",
+  appId: "TU_APP_ID"
+});
+
+// Configuración adicional
+window.__app_id = "tracker-entrenamientos"; // Identificador único para tu app
+window.__initial_auth_token = null;         // Opcional: déjalo en null por defecto
+Nota: Puedes obtener estos valores en la Consola de Firebase > Configuración del Proyecto > General > Tus aplicaciones.
+
+4. Configuración Opcional (Grid Service)
+Si deseas conectar el servicio de Grilla a una API real en lugar de usar datos simulados (mocks), crea un archivo .env en la raíz:
+
+Bash
+
+VITE_API_URL=https://tu-api-backend.com/api
+5. Iniciar el Servidor de Desarrollo
+Para correr la aplicación en modo desarrollo con recarga en caliente (Hot Module Replacement):
+
+Bash
+
+npm run dev
+La aplicación estará disponible típicamente en http://localhost:5173.
+
+6. Construcción para Producción
+Para generar los archivos estáticos optimizados para producción:
+
+Bash
+
+npm run build
+Esto creará una carpeta dist/ lista para ser desplegada en cualquier hosting estático (Firebase Hosting, Vercel, Netlify, etc.).
