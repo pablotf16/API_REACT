@@ -1,99 +1,17 @@
-1. Prerrequisitos
-Tener instalado Node.js (versión 16 o superior).
+Requisitos.
+Tener instalado :
+Node.js. Se recomienda la versión LTS (v18 o superior), aunque la v16 podría funcionar. usar node -v para confirmar
 
-2. Crear el Proyecto
-Abre tu terminal y ejecuta los siguientes comandos para crear una estructura base con Vite y React:
-gi
-Bash
+React y React DOM: Librerías base.
 
-npm create vite@latest workout-tracker -- --template react
-cd workout-tracker
-npm install
-3. Instalar Dependencias
-Instala Firebase y las herramientas para Tailwind CSS (los estilos que usa el proyecto):
+Firebase SDK: Para conectar con los servicios de Google (firebase/auth, firebase/firestore).
 
-Bash
+Tailwind CSS: Para los estilos visuales, ya que el archivo src/index.css utiliza la directiva @import "tailwindcss";.(Se utiliza V4)
 
-npm install firebase
-npm install -D tailwindcss postcss autoprefixer
-npx tailwindcss init -p
-4. Configurar Tailwind CSS
-Abre el archivo tailwind.config.js que se creó y reemplaza content para que detecte tus archivos:
+Nota: Necesitarás instalar también postcss y autoprefixer como dependencias de desarrollo para que Tailwind funcione.
 
-JavaScript
+Parte de la IA:
+OpenAI API Key: Si deseas que funcione el "Chat con IA" , necesitarás una clave personal de OpenAI, aunque la aplicación cargará igual sin ella (el chat simplemente no responderá).
 
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-}
-Abre el archivo src/index.css y reemplaza todo su contenido por las directivas de Tailwind:
-
-CSS
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-(Nota: El archivo original usaba @import "tailwindcss";, pero la configuración estándar local suele requerir las directivas @tailwind).
-
-5. Configurar Archivos del Proyecto
-Crea la estructura de carpetas y archivos copiando el código que tienes.
-
-Estructura de carpetas necesaria:
-
-Plaintext
-
-src/
-├── components/
-│   ├── StatCard.jsx
-│   └── WorkoutItem.jsx
-├── services/
-│   └── gridService.js
-├── App.jsx
-├── main.jsx
-└── index.css
-Copia el contenido de src/components/StatCard.jsx y src/components/WorkoutItem.jsx en sus respectivos archivos.
-
-Copia src/services/gridService.js.
-
-Copia src/main.jsx.
-
-6. Ajuste Crítico: src/App.jsx y Firebase
-El archivo src/App.jsx está esperando variables globales (__firebase_config) que no existen en tu entorno local. Debes modificar las líneas iniciales de src/App.jsx.
-
-Reemplaza esto:
-
-JavaScript
-
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-// ...
-Por esto (Usa tu propia configuración de Firebase):
-
-JavaScript
-
-// 1. Ve a la consola de Firebase > Project Settings > General > Your apps
-// 2. Copia el objeto firebaseConfig y pégalo aquí:
-const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_PROJECT.firebaseapp.com",
-  projectId: "TU_PROJECT_ID",
-  storageBucket: "TU_PROJECT.appspot.com",
-  messagingSenderId: "...",
-  appId: "..."
-};
-
-const appId = "my-local-app"; // Puedes poner cualquier string identificador
-const initialAuthToken = null;
-7. Ejecutar la Aplicación
-Una vez guardados los cambios, ejecuta el servidor de desarrollo:
-
-Bash
-
-npm run dev
-La terminal te mostrará una URL (ej. http://localhost:5173/). Abre esa dirección en tu navegador y deberías ver la aplicación funcionando.
+Permisos de Ubicación: Para que funcione el widget del clima, el navegador te pedirá permiso para acceder a tu ubicación.
+puede aparecer en tu barr de busqueda, una vez habilitado deberia aparecer al lado del titulo: "Rastreador de Entrenamientos"

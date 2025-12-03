@@ -64,7 +64,7 @@ const AIChatWidget = ({ isOpen, toggle, apiKey, setApiKey, t }) => {
   const sendMessage = async () => {
     if (!input.trim()) return;
     if (!apiKey) {
-      alert("Por favor ingresa una API Key de OpenAI primero (demo mode).");
+      alert("Por favor ingresa una API Key de OpenAI primero (version demo xd).");
       return;
     }
     
