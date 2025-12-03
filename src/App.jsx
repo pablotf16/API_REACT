@@ -2,508 +2,422 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import StatCard from './components/StatCard';
 import WorkoutItem from './components/WorkoutItem';
 import { initializeApp } from 'firebase/app';
-// Elimina las importaciones de CSS Modules
-// import formStyles from './NewWorkoutForm.module.css';
-// import historyStyles from './HistorySection.module.css';
-
 import { 
   getAuth, 
   onAuthStateChanged, 
-  signInAnonymously, 
-  signInWithCustomToken 
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut
 } from 'firebase/auth';
-import { getFirestore, collection, query, onSnapshot, addDoc, deleteDoc, doc, Timestamp, orderBy } from 'firebase/firestore';
+import { 
+  getFirestore, collection, query, onSnapshot, addDoc, deleteDoc, updateDoc, doc, Timestamp, orderBy 
+} from 'firebase/firestore';
 
+// Importamos los JSON de idiomas 
+import esLang from './locales/es.json';
+import enLang from './locales/en.json';
+
+// --- CONFIGURACIÓN ---
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
 const WORKOUT_TYPES = ['Correr', 'Ciclismo', 'Pesas', 'Yoga', 'Natación', 'Otro'];
+const NEW_EXERCISE_TEMPLATE = { tempId: Date.now(), name: '', sets: '', reps: '', weight: '' };
 
-const NEW_EXERCISE_TEMPLATE = {
-  tempId: Date.now(), 
-  name: '',
-  sets: '', 
-  reps: '', 
-  weight: '', 
-};
+// --- COMPONENTES AUXILIARES (MODALES Y WIDGETS) ---
 
-// (Eliminada la función translateFirebaseError)
+// 1. Widget de Clima (Open-Meteo API - No requiere Key para uso básico)
+const WeatherWidget = () => {
+  const [weather, setWeather] = useState(null);
 
-// Componente principal de la aplicación
-const App = () => {
-  const [workouts, setWorkouts] = useState([]);
-  const [newWorkout, setNewWorkout] = useState({
-    title: '', 
-    type: WORKOUT_TYPES[0],
-    duration: '', 
-    calories: '',
-    date: new Date().toISOString().substring(0, 10), 
-    exercises: [], 
-  });
-  
-  // Estados de autenticación (revertidos)
-  const [db, setDb] = useState(null);
-  const [auth, setAuth] = useState(null);
-  const [userId, setUserId] = useState(null);
-  // (Eliminados currentUser, isAuthModalOpen, authMode, email, password)
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  
-  const [filterType, setFilterType] = useState('Todos'); 
-<div className="bg-red-500 text-white p-10 text-4xl font-bold">
-  TEST DE TAILWIND
-</div>
-  // 1. Configuración de Firebase y Autenticación (REVERTIDO a anónimo)
   useEffect(() => {
-    try {
-      // Basic validation: guard against missing config or placeholder values
-      const isEmptyConfig = Object.keys(firebaseConfig).length === 0;
-      const apiKey = firebaseConfig.apiKey || '';
-      const looksLikePlaceholder = apiKey.startsWith('YOUR_') || apiKey === 'default-app-id' || apiKey.includes('REPLACE_');
-
-      if (isEmptyConfig || looksLikePlaceholder) {
-        console.error("Firebase config is missing or contains placeholder values.");
-        setError("Firebase configuration missing or invalid. Please populate firebase-config.js with your project's credentials.");
-        setLoading(false);
-        return;
-      }
-
-      const app = initializeApp(firebaseConfig);
-      const firestoreDb = getFirestore(app);
-      const firebaseAuth = getAuth(app);
-
-      setDb(firestoreDb);
-      setAuth(firebaseAuth);
-
-      // onAuthStateChanged ahora vuelve a gestionar el inicio de sesión anónimo
-      const unsubscribeAuth = onAuthStateChanged(firebaseAuth, async (user) => {
-        if (!user) {
-          // Si no hay usuario, intenta iniciar sesión (anónimo o con token)
-          try {
-            if (initialAuthToken) {
-              await signInWithCustomToken(firebaseAuth, initialAuthToken);
-            } else {
-              await signInAnonymously(firebaseAuth);
-            }
-          } catch (e) {
-            console.error("Error signing in:", e);
-            setError("Error de autenticación. Consulta la consola.");
-          }
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
+          const data = await res.json();
+          setWeather(data.current_weather);
+        } catch (e) {
+          console.error("Error clima:", e);
         }
-        // Siempre habrá un usuario (anónimo o logueado)
-        setUserId(firebaseAuth.currentUser?.uid || 'anonymous');
-        setLoading(false);
       });
-
-      return () => unsubscribeAuth();
-    } catch (e) {
-      console.error("Error during Firebase initialization:", e);
-      setError("Fallo al inicializar Firebase. Consulta la consola.");
-      setLoading(false);
     }
-  }, []); // Dependencia vacía, se ejecuta solo una vez
+  }, []);
 
-  // 2. Escucha de Datos en Tiempo Real (onSnapshot)
-  useEffect(() => {
-    // Se ejecuta cuando db o userId están listos
-    if (!db || !userId) {
-      return; 
-    }
-
-    const workoutsCollectionPath = `artifacts/${appId}/users/${userId}/workouts`;
-    const q = query(collection(db, workoutsCollectionPath), orderBy("timestamp", "desc"));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedWorkouts = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        date: doc.data().timestamp ? doc.data().timestamp.toDate().toISOString().substring(0, 10) : 'N/A',
-      }));
-      setWorkouts(fetchedWorkouts);
-    }, (e) => {
-      console.error("Error fetching workouts:", e);
-      setError("Error al cargar entrenamientos.");
-    });
-
-    return () => unsubscribe();
-  }, [db, userId]); // Se ejecuta cuando db o userId cambian
-
-  // --- (Eliminados Handlers de Autenticación: handleLogin, handleSignUp, handleLogout) ---
-
-
-  // --- Handlers existentes (Formulario y Ejercicios) ---
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewWorkout(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleAddExerciseRow = () => {
-    setNewWorkout(prev => ({
-      ...prev,
-      exercises: [...prev.exercises, { ...NEW_EXERCISE_TEMPLATE, tempId: Date.now() }],
-    }));
-  };
-
-  const handleUpdateExerciseRow = (tempId, field, value) => {
-    setNewWorkout(prev => ({
-      ...prev,
-      exercises: prev.exercises.map(ex => 
-        ex.tempId === tempId ? { ...ex, [field]: value } : ex
-      ),
-    }));
-  };
-
-  const handleRemoveExerciseRow = (tempId) => {
-    setNewWorkout(prev => ({
-      ...prev,
-      exercises: prev.exercises.filter(ex => ex.tempId !== tempId),
-    }));
-  };
-  
-  const handleReuseWorkout = useCallback((workoutToReuse) => {
-    setNewWorkout({
-      title: workoutToReuse.title || '',
-      type: workoutToReuse.type,
-      duration: '',
-      calories: '',
-      date: new Date().toISOString().substring(0, 10),
-      exercises: (workoutToReuse.exercises || []).map(ex => ({
-        ...ex,
-        tempId: Date.now() + Math.random(),
-      })),
-    });
-    setError('');
-    document.getElementById('new-workout-form')?.scrollIntoView({ behavior: 'smooth' });
-  }, [setNewWorkout, setError]);
-
-  const handleAddWorkout = async (e) => {
-    e.preventDefault();
-    if (!db || !userId) {
-      setError("Base de datos no disponible.");
-      return;
-    }
-    if (!newWorkout.title.trim()) {
-      setError("Por favor, añade un título a la sesión.");
-      return;
-    }
-    const duration = parseInt(newWorkout.duration);
-    const calories = parseInt(newWorkout.calories);
-    if (isNaN(duration) || duration <= 0 || isNaN(calories) || calories <= 0) {
-      setError("La duración y las calorías deben ser números positivos.");
-      return;
-    }
-
-    try {
-      await addDoc(collection(db, `artifacts/${appId}/users/${userId}/workouts`), {
-        title: newWorkout.title,
-        type: newWorkout.type,
-        duration: duration,
-        calories: calories,
-        exercises: newWorkout.exercises.map(({ tempId, ...rest }) => rest), 
-        timestamp: Timestamp.fromDate(new Date(newWorkout.date)),
-        createdAt: Timestamp.now(),
-      });
-      setNewWorkout({
-        title: '',
-        type: WORKOUT_TYPES[0],
-        duration: '',
-        calories: '',
-        date: new Date().toISOString().substring(0, 10),
-        exercises: [],
-      });
-      setError('');
-    } catch (e) {
-      console.error("Error adding document: ", e);
-      setError("Error al guardar el entrenamiento.");
-    }
-  };
-
-  const handleDeleteWorkout = useCallback(async (id) => {
-    if (!db || !userId) {
-      setError("Base de datos no disponible.");
-      return;
-    }
-    try {
-      await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/workouts`, id));
-      setError('');
-    } catch (e) {
-      console.error("Error removing document: ", e);
-      setError("Error al eliminar el entrenamiento.");
-    }
-  }, [db, userId]);
-
-  // --- Lógica de Filtrado y Estadísticas ---
-  const workoutsToDisplay = useMemo(() => (
-    filterType === 'Todos' ? workouts : workouts.filter(w => w.type === filterType)
-  ), [workouts, filterType]);
-
-  const totalDuration = useMemo(() => workoutsToDisplay.reduce((sum, w) => sum + (w.duration || 0), 0), [workoutsToDisplay]);
-  const totalCalories = useMemo(() => workoutsToDisplay.reduce((sum, w) => sum + (w.calories || 0), 0), [workoutsToDisplay]);
-
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen bg-gray-50">
-        <div className="text-xl font-semibold text-blue-600">Cargando aplicación...</div>
-      </div>
-    );
-  }
+  if (!weather) return <span className="text-xs text-blue-200">...</span>;
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 sm:p-8 font-sans">
-      <div className="max-w-4xl mx-auto">
-        
-        <header className="text-center mb-10">
-          <h1 className="text-4xl font-extrabold text-blue-700">Rastreador de Entrenamientos 🏋️‍♀️</h1>
-          <p className="text-gray-600 mt-2">ID de Usuario: <span className="font-mono text-xs p-1 bg-gray-200 rounded">{userId}</span></p>
-        </header>
+    <div className="flex items-center gap-2 bg-white/20 p-2 rounded-lg backdrop-blur-sm text-white text-sm animate-fade-in">
+      <span>🌡️ {weather.temperature}°C</span>
+      <span>💨 {weather.windspeed} km/h</span>
+    </div>
+  );
+};
 
-        <>
-            {error && (
-              <div className="my-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-                {error}
-              </div>
-            )}
+// 2. Chat de OpenAI
+const AIChatWidget = ({ isOpen, toggle, apiKey, setApiKey, t }) => {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
 
-            {/* Sección de Resumen */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10 justify-items-center">
-                <div className="w-full max-w-sm">
-                  <StatCard title="Total Entrenamientos" value={workouts.length} />
-                </div>
-                <div className="w-full max-w-sm">
-                  <StatCard 
-                    title={filterType === 'Todos' ? "Duración Total (min)" : `Duración (${filterType})`} 
-                    value={totalDuration} 
-                  />
-                </div>
-                <div className="w-full max-w-sm">
-                  <StatCard 
-                    title={filterType === 'Todos' ? "Calorías Totales" : `Calorías (${filterType})`} 
-                    value={totalCalories} 
-                  />
-                </div>
-            </div>
+  const sendMessage = async () => {
+    if (!input.trim()) return;
+    if (!apiKey) {
+      alert("Por favor ingresa una API Key de OpenAI primero (demo mode).");
+      return;
+    }
+    
+    const userMsg = { role: 'user', content: input };
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setLoading(true);
 
-            {/* Formulario para Agregar Nuevo Entrenamiento (Refactorizado) */}
-            <div id="new-workout-form" className="
-              w-full max-w-[42rem] mx-auto mb-10 p-6 flex flex-col items-center
-              bg-gradient-to-b from-white to-blue-50
-              border-2 border-blue-200 rounded-2xl
-              shadow-sm hover:shadow-xl hover:shadow-blue-500/15 hover:border-blue-500
-              transition-all duration-300 ease-in-out
-            ">
-              <h2 className="text-blue-600 text-center font-extrabold text-2xl mb-6">Registrar Nuevo Entrenamiento</h2>
-              
-              <form onSubmit={handleAddWorkout} className="space-y-6 w-full">
-                {/* Campo de Título */}
-                <div>
-                  <label htmlFor="title" className="block text-sm font-semibold text-blue-800 mb-1">Título de la Sesión</label>
-                  <input
-                    type="text"
-                    name="title"
-                    id="title"
-                    value={newWorkout.title}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="Ej: Día de Pierna, Cardio Intenso"
-                    className="
-                      bg-white border border-gray-300 rounded-lg py-2 px-3 w-full 
-                      text-gray-800 transition-all focus:outline-none focus:border-blue-500 
-                      focus:ring-4 focus:ring-blue-500/30
-                    "
-                  />
-                </div>
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [...messages, userMsg]
+        })
+      });
+      const data = await res.json();
+      if (data.choices && data.choices[0]) {
+        setMessages(prev => [...prev, data.choices[0].message]);
+      } else {
+        throw new Error(data.error?.message || "Error API");
+      }
+    } catch (e) {
+      setMessages(prev => [...prev, { role: 'system', content: `Error: ${e.message}` }]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                {/* Campos principales en Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div>
-                    <label htmlFor="date" className="block text-sm font-semibold text-blue-800 mb-1">Fecha</label>
-                    <input
-                      type="date"
-                      name="date"
-                      id="date"
-                      value={newWorkout.date}
-                      onChange={handleInputChange}
-                      required
-                      className="bg-white border border-gray-300 rounded-lg py-2 px-3 w-full text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/30 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="type" className="block text-sm font-semibold text-blue-800 mb-1">Tipo</label>
-                    <select
-                      name="type"
-                      id="type"
-                      value={newWorkout.type}
-                      onChange={handleInputChange}
-                      required
-                      className="bg-white border border-gray-300 rounded-lg py-2 px-3 w-full text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/30 transition-all"
-                    >
-                      {WORKOUT_TYPES.map(type => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label htmlFor="duration" className="block text-sm font-semibold text-blue-800 mb-1">Duración (min)</label>
-                    <input
-                      type="number"
-                      name="duration"
-                      id="duration"
-                      value={newWorkout.duration}
-                      onChange={handleInputChange}
-                      min="1"
-                      required
-                      placeholder="60"
-                      className="bg-white border border-gray-300 rounded-lg py-2 px-3 w-full text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/30 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="calories" className="block text-sm font-semibold text-blue-800 mb-1">Calorías</label>
-                    <input
-                      type="number"
-                      name="calories"
-                      id="calories"
-                      value={newWorkout.calories}
-                      onChange={handleInputChange}
-                      min="1"
-                      required
-                      placeholder="300"
-                      className="bg-white border border-gray-300 rounded-lg py-2 px-3 w-full text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/30 transition-all"
-                    />
-                  </div>
-                </div>
+  if (!isOpen) return (
+    <button onClick={toggle} className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-xl hover:bg-blue-700 transition z-50">
+      💬 AI Coach
+    </button>
+  );
 
-                {/* Sección de Ejercicios Detallados (Tabla) */}
-                <div className="bg-white/70 border border-blue-200 rounded-xl p-4">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-blue-700">Ejercicios Detallados</h3>
-                        <button
-                            type="button"
-                            onClick={handleAddExerciseRow}
-                            className="flex items-center text-sm px-4 py-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition font-semibold border border-blue-200"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-plus mr-1"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                            Añadir Ejercicio
-                        </button>
-                    </div>
-                    
-                    <div className="overflow-x-auto">
-                        {newWorkout.exercises.length > 0 && (
-                            <table className="min-w-full divide-y divide-blue-200">
-                                <thead className="bg-blue-50">
-                                  <tr> 
-                                    <th className="px-3 py-2 text-left text-xs font-bold text-blue-600 uppercase w-1/3">Ejercicio</th>
-                                    <th className="px-3 py-2 text-left text-xs font-bold text-blue-600 uppercase">Series</th>
-                                    <th className="px-3 py-2 text-left text-xs font-bold text-blue-600 uppercase">Reps</th>
-                                    <th className="px-3 py-2 text-left text-xs font-bold text-blue-600 uppercase">Peso</th>
-                                    <th className="px-3 py-2"></th> 
-                                  </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-blue-100">
-                                    {newWorkout.exercises.map((ex) => (
-                                        <tr key={ex.tempId}>
-                                            <td className="p-2">
-                                                <input type="text" value={ex.name} onChange={(e) => handleUpdateExerciseRow(ex.tempId, 'name', e.target.value)} placeholder="Ej: Press Banca" 
-                                                className="bg-white border border-gray-300 rounded py-1 px-2 w-full text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"/>
-                                            </td>
-                                            <td className="p-2">
-                                                <input type="number" value={ex.sets} onChange={(e) => handleUpdateExerciseRow(ex.tempId, 'sets', parseInt(e.target.value) || '')} 
-                                                className="bg-white border border-gray-300 rounded py-1 px-2 w-full text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"/>
-                                            </td>
-                                            <td className="p-2">
-                                                <input type="number" value={ex.reps} onChange={(e) => handleUpdateExerciseRow(ex.tempId, 'reps', parseInt(e.target.value) || '')} 
-                                                className="bg-white border border-gray-300 rounded py-1 px-2 w-full text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"/>
-                                            </td>
-                                            <td className="p-2">
-                                                <input type="number" value={ex.weight} onChange={(e) => handleUpdateExerciseRow(ex.tempId, 'weight', parseFloat(e.target.value) || '')} 
-                                                className="bg-white border border-gray-300 rounded py-1 px-2 w-full text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"/>
-                                            </td>
-                                            <td className="p-2 text-center">
-                                                <button type="button" onClick={() => handleRemoveExerciseRow(ex.tempId)} className="text-red-400 hover:text-red-600 p-1 transition bg-red-50 hover:bg-red-100 rounded-full">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
-                    </div>
-                    {newWorkout.exercises.length === 0 && (
-                        <p className="text-blue-400 text-center py-4 text-sm italic">Presiona "Añadir Ejercicio" para comenzar.</p>
-                    )}
-                </div>
+  return (
+    <div className="fixed bottom-6 right-6 w-80 h-96 bg-white border border-blue-200 rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden">
+      <div className="bg-blue-600 p-3 text-white flex justify-between items-center">
+        <h3 className="font-bold">AI Coach 🤖</h3>
+        <button onClick={toggle} className="text-white hover:text-gray-200">✕</button>
+      </div>
+      
+      {!apiKey && (
+        <div className="p-2 bg-yellow-50 text-xs border-b border-yellow-100">
+           <input type="password" placeholder="OpenAI API Key (sk-...)" className="w-full p-1 border rounded" onChange={e => setApiKey(e.target.value)} />
+        </div>
+      )}
 
-                <button
-                  type="submit"
-                  className="w-full py-3 px-4 rounded-xl shadow-lg text-lg font-bold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-300 transition transform hover:-translate-y-0.5"
-                >
-                  Guardar Sesión
-                </button>
-              </form>
-            </div>
+      <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-gray-50">
+        {messages.map((m, i) => (
+          <div key={i} className={`p-2 rounded-lg text-sm max-w-[85%] ${m.role === 'user' ? 'bg-blue-100 ml-auto text-blue-900' : 'bg-white border text-gray-800'}`}>
+            {m.content}
+          </div>
+        ))}
+        {loading && <div className="text-xs text-gray-400 italic">Escribiendo...</div>}
+      </div>
 
-           {/* Lista de Entrenamientos (HistorySection refactorizado) */}
-           <div className="
-             w-full max-w-[42rem] mx-auto p-6
-             bg-gradient-to-b from-white to-blue-50
-             border-2 border-blue-200 rounded-2xl
-             shadow-sm hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/15
-             flex flex-col items-center transition-all duration-300 ease-in-out
-           ">
-              
-              {/* Encabezado */}
-              <div className="flex flex-col items-center w-full mb-6 gap-4 sm:flex-row sm:justify-between">
-                <h2 className="text-2xl font-extrabold text-blue-800 text-center">Historial</h2>
-                
-                {/* Filtro */}
-                <div className="flex items-center gap-2 bg-white py-1 px-3 rounded-full border border-blue-200 shadow-sm">
-                  <label htmlFor="filterType" className="text-sm font-semibold text-blue-400 whitespace-nowrap">
-                    Filtrar:
-                  </label>
-                  <select
-                    id="filterType"
-                    name="filterType"
-                    value={filterType}
-                    onChange={(e) => setFilterType(e.target.value)}
-                    className="border-none bg-transparent text-blue-600 font-semibold text-sm cursor-pointer outline-none focus:text-blue-900 pr-2"
-                  >
-                    <option value="Todos">Todos</option>
-                    {WORKOUT_TYPES.map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              
-              {/* Lista */}
-              <div className="w-full space-y-3">
-                {workoutsToDisplay.length === 0 ? (
-                  <div className="text-center text-blue-300 italic py-8">
-                    <p>
-                      {filterType === 'Todos'
-                        ? "Aún no hay registros."
-                        : `No hay entrenamientos de "${filterType}".`
-                      }
-                    </p>
-                  </div>
-                ) : (
-                  workoutsToDisplay.map((workout) => (
-                    <WorkoutItem
-                      key={workout.id}
-                      workout={workout}
-                      onDelete={handleDeleteWorkout}
-                      onReuse={handleReuseWorkout} 
-                    />
-                  ))
-                )}
-              </div>
-            </div>
-          </>
+      <div className="p-3 border-t bg-white flex gap-2">
+        <input 
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          placeholder={t.chat_placeholder}
+          className="flex-1 border rounded px-2 text-sm focus:outline-blue-500"
+          onKeyDown={e => e.key === 'Enter' && sendMessage()}
+        />
+        <button onClick={sendMessage} className="text-blue-600 font-bold text-sm">{t.chat_send}</button>
       </div>
     </div>
   );
 };
+
+// --- COMPONENTE PRINCIPAL ---
+const App = () => {
+  // Estado Multilenguaje
+  const [lang, setLang] = useState('es');
+  const t = lang === 'es' ? esLang : enLang;
+
+  // Estados Datos
+  const [workouts, setWorkouts] = useState([]);
+  const [editingId, setEditingId] = useState(null); // Para el UPDATE
+  
+  // Formulario
+  const [newWorkout, setNewWorkout] = useState({
+    title: '', type: WORKOUT_TYPES[0], duration: '', calories: '', date: new Date().toISOString().substring(0, 10), exercises: []
+  });
+
+  // Auth & System
+  const [db, setDb] = useState(null);
+  const [auth, setAuth] = useState(null);
+  const [user, setUser] = useState(null);
+  const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [filterType, setFilterType] = useState('Todos');
+
+  // UI Extras
+  const [chatOpen, setChatOpen] = useState(false);
+  const [openAIKey, setOpenAIKey] = useState('');
+
+  // 1. Inicialización
+  useEffect(() => {
+    if (!Object.keys(firebaseConfig).length) {
+      setError("Falta configuración de Firebase."); setLoading(false); return;
+    }
+    const app = initializeApp(firebaseConfig);
+    const firestoreDb = getFirestore(app);
+    const firebaseAuth = getAuth(app);
+    setDb(firestoreDb);
+    setAuth(firebaseAuth);
+
+    const unsubscribe = onAuthStateChanged(firebaseAuth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 2. Data Fetching
+  useEffect(() => {
+    if (!db || !user) return;
+    const q = query(collection(db, `artifacts/${appId}/users/${user.uid}/workouts`), orderBy("timestamp", "desc"));
+    const unsub = onSnapshot(q, snap => {
+      setWorkouts(snap.docs.map(d => ({ id: d.id, ...d.data(), date: d.data().timestamp?.toDate().toISOString().substring(0, 10) || 'N/A' })));
+    });
+    return () => unsub();
+  }, [db, user]);
+
+  // --- HANDLERS AUTH ---
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    try {
+      if (authMode === 'login') await signInWithEmailAndPassword(auth, email, password);
+      else await createUserWithEmailAndPassword(auth, email, password);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleLogout = () => signOut(auth);
+
+  // --- HANDLERS CRUD ---
+  const handleInputChange = (e) => setNewWorkout({ ...newWorkout, [e.target.name]: e.target.value });
+  
+  const handleAddOrUpdateWorkout = async (e) => {
+    e.preventDefault();
+    if (!newWorkout.title.trim()) return;
+
+    const payload = {
+      title: newWorkout.title,
+      type: newWorkout.type,
+      duration: parseInt(newWorkout.duration),
+      calories: parseInt(newWorkout.calories),
+      exercises: newWorkout.exercises.map(({ tempId, ...rest }) => rest),
+      timestamp: Timestamp.fromDate(new Date(newWorkout.date))
+    };
+
+    try {
+      if (editingId) {
+        // UPDATE
+        await updateDoc(doc(db, `artifacts/${appId}/users/${user.uid}/workouts`, editingId), payload);
+        setEditingId(null);
+      } else {
+        // CREATE
+        await addDoc(collection(db, `artifacts/${appId}/users/${user.uid}/workouts`), { ...payload, createdAt: Timestamp.now() });
+      }
+      // Reset form
+      setNewWorkout({ title: '', type: WORKOUT_TYPES[0], duration: '', calories: '', date: new Date().toISOString().substring(0, 10), exercises: [] });
+    } catch (e) { console.error(e); setError("Error saving data"); }
+  };
+
+  const handleDelete = async (id) => {
+    if (confirm("¿Seguro?")) await deleteDoc(doc(db, `artifacts/${appId}/users/${user.uid}/workouts`, id));
+  };
+
+  const handleEdit = (workout) => {
+    setNewWorkout({
+      ...workout,
+      // Restaurar tempIds para la UI
+      exercises: workout.exercises.map(ex => ({ ...ex, tempId: Date.now() + Math.random() })) 
+    });
+    setEditingId(workout.id);
+    document.getElementById('new-workout-form').scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleExercisesOps = {
+    add: () => setNewWorkout(p => ({ ...p, exercises: [...p.exercises, { ...NEW_EXERCISE_TEMPLATE, tempId: Date.now() }] })),
+    update: (id, f, v) => setNewWorkout(p => ({ ...p, exercises: p.exercises.map(e => e.tempId === id ? { ...e, [f]: v } : e) })),
+    remove: (id) => setNewWorkout(p => ({ ...p, exercises: p.exercises.filter(e => e.tempId !== id) }))
+  };
+
+  // --- PAYMENT MOCK ---
+  const handlePayment = () => {
+    // Simulación de redirección a Transbank / Webpay
+    const confirmed = confirm("Te redirigiremos a Webpay (Simulación). ¿Proceder?");
+    if (confirmed) {
+      alert("Pago exitoso. ¡Gracias por suscribirte!");
+      // Aquí iría la lógica real: window.location.href = '/api/init-transaction'
+    }
+  };
+
+  // Cálculos
+  const filteredWorkouts = useMemo(() => filterType === 'Todos' ? workouts : workouts.filter(w => w.type === filterType), [workouts, filterType]);
+  const totals = useMemo(() => filteredWorkouts.reduce((acc, w) => ({ dur: acc.dur + (w.duration || 0), cal: acc.cal + (w.calories || 0) }), { dur: 0, cal: 0 }), [filteredWorkouts]);
+
+  if (loading) return <div className="flex h-screen items-center justify-center text-blue-600">Loading...</div>;
+
+  // --- LOGIN SCREEN ---
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
+          <h2 className="text-2xl font-bold text-center text-blue-700 mb-6">{authMode === 'login' ? t.login : t.register}</h2>
+          {error && <p className="text-red-500 text-sm mb-4 bg-red-50 p-2 rounded">{error}</p>}
+          <form onSubmit={handleAuth} className="space-y-4">
+            <input type="email" placeholder={t.email} className="w-full p-3 border rounded-lg" value={email} onChange={e => setEmail(e.target.value)} required />
+            <input type="password" placeholder={t.password} className="w-full p-3 border rounded-lg" value={password} onChange={e => setPassword(e.target.value)} required />
+            <button className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">
+              {authMode === 'login' ? t.login : t.register}
+            </button>
+          </form>
+          <p className="text-center mt-4 text-sm text-gray-600 cursor-pointer hover:underline" onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}>
+            {authMode === 'login' ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia Sesión"}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // --- MAIN APP ---
+  return (
+    <div className="min-h-screen bg-gray-100 font-sans">
+      {/* HEADER */}
+      <div className="bg-blue-600 text-white p-4 shadow-md sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-extrabold">{t.app_title}</h1>
+            <WeatherWidget />
+          </div>
+          <div className="flex items-center gap-3">
+             {/* Selector Idioma */}
+            <select onChange={(e) => setLang(e.target.value)} value={lang} className="bg-blue-700 text-white text-sm border-none rounded p-1">
+              <option value="es">🇪🇸 ES</option>
+              <option value="en">🇺🇸 EN</option>
+            </select>
+            <button onClick={handlePayment} className="bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-full hover:bg-yellow-300 transition">
+              💎 Premium
+            </button>
+            <button onClick={handleLogout} className="bg-blue-800 text-xs px-3 py-1 rounded hover:bg-blue-900 transition">
+              {t.logout}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto p-4 sm:p-8">
+        
+        {/* STATS */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <StatCard title={t.total_workouts} value={workouts.length} />
+          <StatCard title={t.total_duration} value={totals.dur} />
+          <StatCard title={t.total_calories} value={totals.cal} />
+        </div>
+
+        {/* FORM (CREATE / UPDATE) */}
+        <div id="new-workout-form" className="bg-white p-6 rounded-2xl shadow-lg border-2 border-blue-100 mb-8">
+          <h2 className="text-xl font-bold text-blue-800 mb-4 text-center">
+            {editingId ? t.edit_workout : t.new_workout}
+          </h2>
+          
+          <form onSubmit={handleAddOrUpdateWorkout} className="space-y-4">
+            <div>
+              <label className="text-sm font-bold text-gray-700">{t.title_label}</label>
+              <input name="title" value={newWorkout.title} onChange={handleInputChange} className="w-full border p-2 rounded" required />
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <input type="date" name="date" value={newWorkout.date} onChange={handleInputChange} className="border p-2 rounded w-full" />
+              <select name="type" value={newWorkout.type} onChange={handleInputChange} className="border p-2 rounded w-full">
+                {WORKOUT_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+              </select>
+              <input type="number" name="duration" placeholder={t.duration} value={newWorkout.duration} onChange={handleInputChange} className="border p-2 rounded w-full" />
+              <input type="number" name="calories" placeholder={t.calories} value={newWorkout.calories} onChange={handleInputChange} className="border p-2 rounded w-full" />
+            </div>
+
+            {/* EJERCICIOS */}
+            <div className="bg-blue-50 p-4 rounded-xl">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-bold text-blue-700 text-sm">{t.exercises}</h3>
+                <button type="button" onClick={handleExercisesOps.add} className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded hover:bg-blue-300">
+                  + {t.add_exercise}
+                </button>
+              </div>
+              {newWorkout.exercises.map(ex => (
+                <div key={ex.tempId} className="flex gap-2 mb-2">
+                  <input placeholder="Nombre" value={ex.name} onChange={e => handleExercisesOps.update(ex.tempId, 'name', e.target.value)} className="flex-grow border p-1 rounded text-sm" />
+                  <input placeholder="Series" type="number" value={ex.sets} onChange={e => handleExercisesOps.update(ex.tempId, 'sets', e.target.value)} className="w-16 border p-1 rounded text-sm" />
+                  <input placeholder="Reps" type="number" value={ex.reps} onChange={e => handleExercisesOps.update(ex.tempId, 'reps', e.target.value)} className="w-16 border p-1 rounded text-sm" />
+                  <button type="button" onClick={() => handleExercisesOps.remove(ex.tempId)} className="text-red-500">🗑️</button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <button type="submit" className={`flex-1 py-3 rounded-xl font-bold text-white transition ${editingId ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                {editingId ? t.update : t.save}
+              </button>
+              {editingId && (
+                <button type="button" onClick={() => { setEditingId(null); setNewWorkout({ title: '', type: WORKOUT_TYPES[0], duration: '', calories: '', date: new Date().toISOString().substring(0, 10), exercises: [] }); }} className="px-4 bg-gray-300 rounded-xl font-bold text-gray-700">
+                  Cancelar
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+
+        {/* LISTA & FILTROS */}
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-gray-800">{t.history}</h2>
+          <select value={filterType} onChange={e => setFilterType(e.target.value)} className="border-none bg-white py-1 px-3 rounded-full shadow-sm text-sm">
+            <option value="Todos">Todos</option>
+            {WORKOUT_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+          </select>
+        </div>
+
+        <div className="space-y-3">
+          {filteredWorkouts.map(w => (
+            <div key={w.id} className="relative group">
+              <WorkoutItem workout={w} onDelete={handleDelete} onReuse={(w) => handleEdit(w)} />
+              {/* Sobreescribimos el botón de reutilizar para que actúe como Editar en este contexto o agregamos uno nuevo */}
+              <button 
+                onClick={() => handleEdit(w)} 
+                className="absolute top-4 right-12 text-orange-400 hover:text-orange-600 p-2 bg-white/80 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition"
+                title="Editar"
+              >
+                ✏️
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* CHAT WIDGET */}
+      <AIChatWidget isOpen={chatOpen} toggle={() => setChatOpen(!chatOpen)} apiKey={openAIKey} setApiKey={setOpenAIKey} t={t} />
+      
+    </div>
+  );
+};
+
 export default App;

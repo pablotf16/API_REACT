@@ -1,71 +1,99 @@
-Por supuesto. Aquí tienes una guía paso a paso detallada que puedes añadir a tu README.md bajo una sección como "🚀 Instalación y Ejecución Local".
-
-Estas instrucciones cubren desde la instalación de dependencias hasta la configuración de los archivos que no se suben al repositorio (como firebase-config.js).
-
-Propuesta para el README.md
-🚀 Ejecución Local
-Sigue estos pasos para clonar y ejecutar el proyecto en tu máquina local.
-
 1. Prerrequisitos
-Asegúrate de tener instalado:
+Tener instalado Node.js (versión 16 o superior).
 
-Node.js (versión 18 o superior recomendada).
+2. Crear el Proyecto
+Abre tu terminal y ejecuta los siguientes comandos para crear una estructura base con Vite y React:
+gi
+Bash
 
-npm (normalmente viene con Node.js).
-
-2. Instalación
-Clona el repositorio e instala las dependencias:
+npm create vite@latest workout-tracker -- --template react
+cd workout-tracker
+npm install
+3. Instalar Dependencias
+Instala Firebase y las herramientas para Tailwind CSS (los estilos que usa el proyecto):
 
 Bash
 
-# Clonar el repositorio
-git clone <URL_DEL_REPOSITORIO>
-cd nombre-del-proyecto
-
-# Instalar dependencias
-npm install
-3. Configuración Obligatoria (Firebase)
-Este proyecto no funcionará sin la configuración de Firebase. Como las credenciales son sensibles, el archivo de configuración no está incluido en el repositorio.
-
-Crea un archivo llamado firebase-config.js en la raíz del proyecto (al mismo nivel que package.json).
-
-Copia y pega el siguiente contenido, reemplazando los valores con los de tu proyecto de Firebase:
+npm install firebase
+npm install -D tailwindcss postcss autoprefixer
+npx tailwindcss init -p
+4. Configurar Tailwind CSS
+Abre el archivo tailwind.config.js que se creó y reemplaza content para que detecte tus archivos:
 
 JavaScript
 
-// firebase-config.js
-window.__firebase_config = JSON.stringify({
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+Abre el archivo src/index.css y reemplaza todo su contenido por las directivas de Tailwind:
+
+CSS
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+(Nota: El archivo original usaba @import "tailwindcss";, pero la configuración estándar local suele requerir las directivas @tailwind).
+
+5. Configurar Archivos del Proyecto
+Crea la estructura de carpetas y archivos copiando el código que tienes.
+
+Estructura de carpetas necesaria:
+
+Plaintext
+
+src/
+├── components/
+│   ├── StatCard.jsx
+│   └── WorkoutItem.jsx
+├── services/
+│   └── gridService.js
+├── App.jsx
+├── main.jsx
+└── index.css
+Copia el contenido de src/components/StatCard.jsx y src/components/WorkoutItem.jsx en sus respectivos archivos.
+
+Copia src/services/gridService.js.
+
+Copia src/main.jsx.
+
+6. Ajuste Crítico: src/App.jsx y Firebase
+El archivo src/App.jsx está esperando variables globales (__firebase_config) que no existen en tu entorno local. Debes modificar las líneas iniciales de src/App.jsx.
+
+Reemplaza esto:
+
+JavaScript
+
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+// ...
+Por esto (Usa tu propia configuración de Firebase):
+
+JavaScript
+
+// 1. Ve a la consola de Firebase > Project Settings > General > Your apps
+// 2. Copia el objeto firebaseConfig y pégalo aquí:
+const firebaseConfig = {
   apiKey: "TU_API_KEY",
-  authDomain: "TU_PROYECTO.firebaseapp.com",
-  projectId: "TU_PROYECTO_ID",
-  storageBucket: "TU_PROYECTO.appspot.com",
-  messagingSenderId: "TU_SENDER_ID",
-  appId: "TU_APP_ID"
-});
+  authDomain: "TU_PROJECT.firebaseapp.com",
+  projectId: "TU_PROJECT_ID",
+  storageBucket: "TU_PROJECT.appspot.com",
+  messagingSenderId: "...",
+  appId: "..."
+};
 
-// Configuración adicional
-window.__app_id = "tracker-entrenamientos"; // Identificador único para tu app
-window.__initial_auth_token = null;         // Opcional: déjalo en null por defecto
-Nota: Puedes obtener estos valores en la Consola de Firebase > Configuración del Proyecto > General > Tus aplicaciones.
-
-4. Configuración Opcional (Grid Service)
-Si deseas conectar el servicio de Grilla a una API real en lugar de usar datos simulados (mocks), crea un archivo .env en la raíz:
-
-Bash
-
-VITE_API_URL=https://tu-api-backend.com/api
-5. Iniciar el Servidor de Desarrollo
-Para correr la aplicación en modo desarrollo con recarga en caliente (Hot Module Replacement):
+const appId = "my-local-app"; // Puedes poner cualquier string identificador
+const initialAuthToken = null;
+7. Ejecutar la Aplicación
+Una vez guardados los cambios, ejecuta el servidor de desarrollo:
 
 Bash
 
 npm run dev
-La aplicación estará disponible típicamente en http://localhost:5173.
-
-6. Construcción para Producción
-Para generar los archivos estáticos optimizados para producción:
-
-Bash
-
-npm run build
-Esto creará una carpeta dist/ lista para ser desplegada en cualquier hosting estático (Firebase Hosting, Vercel, Netlify, etc.).
+La terminal te mostrará una URL (ej. http://localhost:5173/). Abre esa dirección en tu navegador y deberías ver la aplicación funcionando.
